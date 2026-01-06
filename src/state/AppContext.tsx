@@ -1,25 +1,63 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useMemo, useState } from "react";
+
+export interface SoundPrintData {
+  dataUrl?: string | null;
+  createdAt: string; // ISO string
+  durationSec?: number;
+  fileName?: string;
+}
+
 interface AppState {
   file: File | null;
-  soundPrintData: any | null;
+  soundPrintData: SoundPrintData | null;
   isSubscribed: boolean;
   step: number;
 }
-const AppContext = createContext<{
+
+type AppContextValue = {
   state: AppState;
   setFile: (f: File) => void;
-  setSoundPrint: (d: any) => void;
+  setSoundPrint: (d: SoundPrintData) => void;
   setStep: (s: number) => void;
-} | undefined>(undefined);
-export const AppProvider = ({ children }: { children: React.ReactNode }) => {
-  const [state, setState] = useState<AppState>({ file: null, soundPrintData: null, isSubscribed: false, step: 1 });
-  const setFile = (file: File) => setState(prev => ({ ...prev, file, step: 2 }));
-  const setSoundPrint = (soundPrintData: any) => setState(prev => ({ ...prev, soundPrintData }));
-  const setStep = (step: number) => setState(prev => ({ ...prev, step }));
-  return <AppContext.Provider value={{ state, setFile, setSoundPrint, setStep }}>{children}</AppContext.Provider>;
+  reset: () => void;
 };
-export const useApp = () => {
-  const context = useContext(AppContext);
-  if (!context) throw new Error("useApp must be used within AppProvider");
-  return context;
-};
+
+const AppContext = createContext<AppContextValue | undefined>(undefined);
+
+export function AppProvider({ children }: { children: React.ReactNode }) {
+  const [state, setState] = useState<AppState>({
+    file: null,
+    soundPrintData: null,
+    isSubscribed: false,
+    step: 1,
+  });
+
+  const value = useMemo<AppContextValue>(() => {
+    const setFile = (file: File) =>
+      setState((prev) => ({ ...prev, file, step: 2 }));
+
+    const setSoundPrint = (soundPrintData: SoundPrintData) =>
+      setState((prev) => ({ ...prev, soundPrintData }));
+
+    const setStep = (step: number) =>
+      setState((prev) => ({ ...prev, step }));
+
+    const reset = () =>
+      setState({
+        file: null,
+        soundPrintData: null,
+        isSubscribed: false,
+        step: 1,
+      });
+
+    return { state, setFile, setSoundPrint, setStep, reset };
+  }, [state]);
+
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+}
+
+export function useApp() {
+  const ctx = useContext(AppContext);
+  if (!ctx) throw new Error("useApp must be used within AppProvider");
+  return ctx;
+}

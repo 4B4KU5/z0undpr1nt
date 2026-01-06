@@ -3,14 +3,11 @@
 @tailwind utilities;
 
 :root {
-  background-color: #050810;
   color-scheme: dark;
 }
 
-body {
+html, body {
+  height: 100%;
   margin: 0;
-  background-color: #050810;
-  color: white;
-  font-family: 'Courier New', Courier, monospace;
-  overflow-x: hidden;
+  background: #050810;
 }
