@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: dark; }
+html, body { height: 100%; margin: 0; background: #050810; }
+
+/* background skin */
+.cyber-bg {
+  position: relative;
+    min-height: 100vh;
+      background:
+          radial-gradient(1100px 700px at 30% 18%, rgba(0, 240, 255, 0.10), transparent 55%),
+              radial-gradient(900px 600px at 78% 26%, rgba(255, 0, 60, 0.08), transparent 55%),
+                  radial-gradient(1200px 900px at 50% 80%, rgba(0, 255, 102, 0.06), transparent 60%),
+                      linear-gradient(180deg, #050810 0%, #03050c 100%);
+                        overflow-x: hidden;
+                        }

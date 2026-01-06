@@ -2,7 +2,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppProvider } from "./state/AppContext";
 import { UploadPage } from "./pages/UploadPage";
 import { SoundPrintPage } from "./pages/SoundPrintPage";
-import "./styles/globals.css";
 
 export default function App() {
   return (
