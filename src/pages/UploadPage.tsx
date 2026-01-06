@@ -7,16 +7,17 @@ export function UploadPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // In the future, we'll store the file in AppContext here
+      // Logic for processing file goes here later
       navigate("/sound-print");
     }
   };
 
   return (
     <div className="ritual-terminal">
-      {/* The visible UI is provided by the background image */}
-      
-      {/* The invisible functional hotspot */}
+      {/* 
+         WARNING: Do not add <h1> or <p> tags here. 
+         The background image already has the text.
+      */}
       <div className="upload-hotspot">
         <input 
           type="file" 
