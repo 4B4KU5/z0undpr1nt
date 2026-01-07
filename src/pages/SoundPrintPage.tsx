@@ -12,13 +12,11 @@ export function SoundPrintPage() {
   const { state, setSoundPrint, reset } = useApp();
   const navigate = useNavigate();
 
-  // Refs for Web Audio
+  // Refs
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
   const frequencyDataRef = useRef<Uint8Array | null>(null);
-  
-  // Refs for Visualization
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const trailCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const rafRef = useRef<number>(0);
@@ -35,27 +33,24 @@ export function SoundPrintPage() {
     if (!state.file) navigate("/");
   }, [state.file, navigate]);
 
-  // Create object URL for audio element
+  // Object URL
   const objectUrl = useMemo(() => {
     if (!state.file) return null;
     return URL.createObjectURL(state.file);
   }, [state.file]);
 
-  // Cleanup object URL
   useEffect(() => {
     return () => {
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [objectUrl]);
 
-  // Initialize Web Audio API
+  // Init Audio
   const initAudioEngine = useCallback(() => {
     if (!audioRef.current || audioContextRef.current) return;
 
-    // Fix for Safari/Webkit
     const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
     const ctx = new AudioContextClass();
-    
     const analyser = ctx.createAnalyser();
     
     analyser.fftSize = FFT_SIZE;
@@ -71,55 +66,45 @@ export function SoundPrintPage() {
     frequencyDataRef.current = new Uint8Array(analyser.frequencyBinCount);
   }, []);
 
-  // Get 36-band frequency data
+  // Get Frequency Data
   const getFrequencyBands = useCallback((): number[] => {
     const analyser = analyserRef.current;
     const frequencyData = frequencyDataRef.current;
     
-    if (!analyser || !frequencyData) {
-      return new Array(BAND_COUNT).fill(0);
-    }
+    if (!analyser || !frequencyData) return new Array(BAND_COUNT).fill(0);
 
-    // FIX: Type assertion added here to satisfy strict TS
     analyser.getByteFrequencyData(frequencyData as any);
     
     const bands: number[] = [];
     const binCount = frequencyData.length;
     
     for (let i = 0; i < BAND_COUNT; i++) {
-      // Logarithmic mapping for perceptual accuracy
       const lowFreq = Math.pow(i / BAND_COUNT, 2);
       const highFreq = Math.pow((i + 1) / BAND_COUNT, 2);
-      
       const lowBin = Math.floor(lowFreq * binCount);
       const highBin = Math.min(Math.floor(highFreq * binCount), binCount - 1);
       
       let sum = 0;
       let count = 0;
-      
       for (let j = lowBin; j <= highBin; j++) {
         sum += frequencyData[j];
         count++;
       }
-      
       bands.push(count > 0 ? (sum / count) / 255 : 0);
     }
-    
     return bands;
   }, []);
 
-  // Start the ritual
+  // Start Ritual
   const startRitual = async () => {
     const el = audioRef.current;
     if (!el) return;
 
     try {
       initAudioEngine();
-      
       if (audioContextRef.current?.state === 'suspended') {
         await audioContextRef.current.resume();
       }
-      
       await el.play();
       setIsStarted(true);
       setPhase('ritual');
@@ -129,7 +114,7 @@ export function SoundPrintPage() {
     }
   };
 
-  // Canvas render loop
+  // Render Loop
   const renderCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     const trailCanvas = trailCanvasRef.current;
@@ -147,24 +132,16 @@ export function SoundPrintPage() {
 
     const currentBands = getFrequencyBands();
     
-    // Performance Note: We do NOT set React state (setBands) here anymore.
-    // This keeps the loop running at 60fps without triggering React re-renders.
-
-    // Store history for trails
     historyRef.current.push([...currentBands]);
-    if (historyRef.current.length > 45) {
-      historyRef.current.shift();
-    }
+    if (historyRef.current.length > 45) historyRef.current.shift();
 
-    // Clear main canvas
     ctx.fillStyle = '#050810';
     ctx.fillRect(0, 0, width, height);
 
-    // Fade trail canvas
     trailCtx.fillStyle = 'rgba(5, 8, 16, 0.04)';
     trailCtx.fillRect(0, 0, width, height);
 
-    // Draw historical trails
+    // Draw History
     const historyLen = historyRef.current.length;
     for (let h = 0; h < historyLen; h++) {
       const historicBands = historyRef.current[h];
@@ -189,19 +166,16 @@ export function SoundPrintPage() {
       }
     }
 
-    // Draw current frame bands
+    // Draw Current
     for (let i = 0; i < BAND_COUNT; i++) {
       const value = currentBands[i];
-      // We removed 'hex' destructuring to silence the warning
       const { rgb } = BAND_COLORS[i];
       const radius = minRadius + (maxRadius - minRadius) * value;
       const startAngle = (i / BAND_COUNT) * Math.PI * 2 - Math.PI / 2;
       const endAngle = ((i + 1) / BAND_COUNT) * Math.PI * 2 - Math.PI / 2;
 
-      // Glow layer
       const gradient = ctx.createRadialGradient(
-        centerX, centerY, minRadius,
-        centerX, centerY, radius * 1.3
+        centerX, centerY, minRadius, centerX, centerY, radius * 1.3
       );
       gradient.addColorStop(0, `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0)`);
       gradient.addColorStop(0.6, `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${value * 0.5})`);
@@ -214,7 +188,6 @@ export function SoundPrintPage() {
       ctx.fillStyle = gradient;
       ctx.fill();
 
-      // Core band
       ctx.beginPath();
       ctx.moveTo(centerX, centerY);
       ctx.arc(centerX, centerY, radius, startAngle, endAngle);
@@ -222,7 +195,6 @@ export function SoundPrintPage() {
       ctx.fillStyle = `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${0.35 + value * 0.65})`;
       ctx.fill();
 
-      // Edge highlight
       if (value > 0.15) {
         ctx.beginPath();
         ctx.arc(centerX, centerY, radius, startAngle, endAngle);
@@ -232,10 +204,8 @@ export function SoundPrintPage() {
       }
     }
 
-    // Center void
     const voidGradient = ctx.createRadialGradient(
-      centerX, centerY, 0,
-      centerX, centerY, minRadius * 1.1
+      centerX, centerY, 0, centerX, centerY, minRadius * 1.1
     );
     voidGradient.addColorStop(0, '#050810');
     voidGradient.addColorStop(0.85, '#050810');
@@ -246,7 +216,6 @@ export function SoundPrintPage() {
     ctx.fillStyle = voidGradient;
     ctx.fill();
 
-    // Composite trail layer
     ctx.globalAlpha = 0.6;
     ctx.drawImage(trailCanvas, 0, 0);
     ctx.globalAlpha = 1;
@@ -256,148 +225,103 @@ export function SoundPrintPage() {
     }
   }, [getFrequencyBands, isStarted, phase]);
 
-  // Start render loop when ritual begins
   useEffect(() => {
     if (isStarted && phase === 'ritual') {
       rafRef.current = requestAnimationFrame(renderCanvas);
     }
-    return () => {
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
-      }
-    };
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
   }, [isStarted, phase, renderCanvas]);
 
-  // Countdown timer
+  // Timer
   useEffect(() => {
     if (!isStarted || phase === 'capture') return;
-
     const startTime = Date.now();
-    
-    // Timer runs separately from canvas loop
     const id = window.setInterval(() => {
       const elapsed = (Date.now() - startTime) / 1000;
       const remaining = Math.max(0, RITUAL_DURATION - elapsed);
-      
       setTimeLeft(remaining);
-
-      if (remaining <= 6 && phase === 'ritual') {
-        setPhase('diffusion');
-      }
-
+      if (remaining <= 6 && phase === 'ritual') setPhase('diffusion');
       if (remaining <= 0.1) {
         window.clearInterval(id);
         captureAndFinish();
       }
     }, 50);
-
     return () => window.clearInterval(id);
   }, [isStarted, phase]);
 
-  // Capture final canvas state
   const captureAndFinish = useCallback(() => {
     setPhase('capture');
-    
     const canvas = canvasRef.current;
-    const el = audioRef.current;
-    
-    if (el) {
-      el.pause();
-    }
+    if (audioRef.current) audioRef.current.pause();
 
     setTimeout(() => {
       const dataUrl = canvas?.toDataURL('image/png', 1.0) ?? null;
-      
       setSoundPrint({
         createdAt: new Date().toISOString(),
         durationSec: RITUAL_DURATION,
         fileName: state.file?.name,
         dataUrl,
       });
-
       navigate("/result");
     }, 150);
   }, [setSoundPrint, state.file?.name, navigate]);
 
-  // Canvas resize
   useEffect(() => {
     const handleResize = () => {
-      const canvas = canvasRef.current;
-      const trailCanvas = trailCanvasRef.current;
-      if (!canvas || !trailCanvas) return;
-
+      if (!canvasRef.current || !trailCanvasRef.current) return;
       const size = Math.min(window.innerWidth * 0.9, window.innerHeight * 0.55, 500);
-      canvas.width = size;
-      canvas.height = size;
-      trailCanvas.width = size;
-      trailCanvas.height = size;
+      canvasRef.current.width = size;
+      canvasRef.current.height = size;
+      trailCanvasRef.current.width = size;
+      trailCanvasRef.current.height = size;
     };
-
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Cleanup audio context
-  useEffect(() => {
-    return () => {
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
-      }
-    };
-  }, []);
-
-  // Calculate blur intensity
   const blurIntensity = phase === 'diffusion' 
     ? Math.pow((6 - timeLeft) / 6, 1.5) * 16 
     : 0;
 
-  // Haptic feedback
   useEffect(() => {
     if (phase === 'diffusion' && 'vibrate' in navigator) {
-      const pattern = timeLeft < 3 ? [50, 30, 50] : [30];
-      navigator.vibrate(pattern);
+      navigator.vibrate(timeLeft < 3 ? [50, 30, 50] : [30]);
     }
-  }, [phase, timeLeft]); // Note: timeLeft causes effect to run often, which is okay for haptics
+  }, [phase, timeLeft]);
 
   return (
-    <div className="min-h-screen bg-[#050810] text-white overflow-hidden">
+    <div className="min-h-screen bg-[#050810] text-white overflow-hidden relative">
       {objectUrl && (
-        <audio 
-          ref={audioRef} 
-          src={objectUrl} 
-          crossOrigin="anonymous"
-          className="hidden" 
-        />
+        <audio ref={audioRef} src={objectUrl} crossOrigin="anonymous" className="hidden" />
       )}
 
-      {/* Tap to begin overlay */}
+      {/* --- NEW: RITUAL LAUNCH OVERLAY --- */}
       {!isStarted && (
-        <button
-          onClick={startRitual}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm"
+        <div 
+          className="fixed inset-0 z-50 bg-black"
+          style={{
+            backgroundImage: "url('/ritual-launch-bg.jpg')",
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            backgroundRepeat: "no-repeat"
+          }}
         >
-          <div className="text-center">
-            <div className="w-20 h-20 mx-auto mb-6 rounded-full border-2 border-[#00FF66]/50 flex items-center justify-center animate-pulse">
-              <svg className="w-8 h-8 text-[#00FF66]" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z" />
-              </svg>
-            </div>
-            <div className="text-[#00FF66] font-mono tracking-[0.22em] uppercase text-sm">
-              Tap to begin ritual
-            </div>
-            <div className="mt-3 text-white/40 text-xs font-mono">
-              {RITUAL_DURATION} seconds // Crystallization Mode
-            </div>
-          </div>
-        </button>
+          {/* Invisible Hotspot mapped to the central Green Circle */}
+          <button
+            onClick={startRitual}
+            className="absolute top-[50%] left-[50%] -translate-x-1/2 -translate-y-1/2 w-[35vw] h-[35vw] max-w-[200px] max-h-[200px] rounded-full cursor-pointer hover:bg-white/5 transition-colors"
+            aria-label="Start Ritual"
+          >
+            {/* Optional Pulse to guide the user */}
+            <div className="absolute inset-0 rounded-full animate-ping opacity-20 bg-[#00FF66]"></div>
+          </button>
+        </div>
       )}
 
-      {/* Header */}
+      {/* --- ACTIVE RITUAL INTERFACE --- */}
       <header className="px-6 pt-5 flex items-center justify-between relative z-10">
-        <div className="text-[#FF003C] font-black italic text-2xl tracking-tight">
-          4B4KU5
-        </div>
+        <div className="text-[#FF003C] font-black italic text-2xl tracking-tight">4B4KU5</div>
         <button
           onClick={() => {
             if (audioRef.current) audioRef.current.pause();
@@ -410,7 +334,6 @@ export function SoundPrintPage() {
         </button>
       </header>
 
-      {/* Main visualization area */}
       <main className="flex flex-col items-center justify-center px-4 pt-4">
         <div className="mb-4 text-white/50 font-mono text-xs truncate max-w-[80vw]">
           {state.file?.name ?? "—"}
@@ -418,7 +341,6 @@ export function SoundPrintPage() {
 
         <div className="relative">
           <canvas ref={trailCanvasRef} className="hidden" />
-          
           <canvas
             ref={canvasRef}
             className="rounded-full"
@@ -432,7 +354,6 @@ export function SoundPrintPage() {
               `,
             }}
           />
-
           <div 
             className="absolute inset-0 flex items-center justify-center pointer-events-none"
             style={{ opacity: phase === 'diffusion' ? 0 : 1, transition: 'opacity 0.5s' }}
@@ -449,22 +370,18 @@ export function SoundPrintPage() {
           </div>
         </div>
 
-        {/* Phase indicator dots */}
         <div className="flex gap-2 mt-6">
           {['waiting', 'ritual', 'diffusion', 'capture'].map((p) => (
             <div
               key={p}
               className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                phase === p 
-                  ? 'bg-[#00FF66] shadow-[0_0_8px_#00FF66]' 
-                  : 'bg-white/20'
+                phase === p ? 'bg-[#00FF66] shadow-[0_0_8px_#00FF66]' : 'bg-white/20'
               }`}
             />
           ))}
         </div>
       </main>
 
-      {/* Footer */}
       <footer className="fixed bottom-0 left-0 right-0 h-20 border-t border-white/10 bg-[#050810]/90 backdrop-blur-md px-6 flex items-center justify-between">
         <div>
           <div className="text-[#00FF66]/70 font-mono text-[10px] tracking-[0.2em] uppercase">
@@ -473,9 +390,7 @@ export function SoundPrintPage() {
           <div className="mt-2 h-1.5 w-36 bg-white/10 rounded-full overflow-hidden">
             <div 
               className="h-full bg-gradient-to-r from-[#00FF66] to-[#00FF66]/60 transition-all duration-100"
-              style={{ 
-                width: `${((RITUAL_DURATION - timeLeft) / RITUAL_DURATION) * 100}%`,
-              }}
+              style={{ width: `${((RITUAL_DURATION - timeLeft) / RITUAL_DURATION) * 100}%` }}
             />
           </div>
         </div>
