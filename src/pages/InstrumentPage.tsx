@@ -1,138 +1,101 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { useApp } from '../state/AppContext'; // FIX: Pointing to correct 'state' folder
-import { audioEngine } from '../audio/AudioEngine';
-import { BandColumn } from '../components/BandColumn';
-import { Ribbon } from '../components/Ribbon';
-import { BAND_COLORS } from '../config/bandColors';
-// Ensure this CSS file exists, or create it as we discussed earlier
-import '../styles/Instrument.css'; 
+import React, { createContext, useContext, useMemo, useState } from "react";
 
-const MAX_BANDS = 36;
-const MAX_ROWS = 36;
+export interface SoundPrintData {
+  dataUrl?: string | null;
+  createdAt: string;
+  durationSec?: number;
+  fileName?: string;
+}
 
-const InstrumentPage: React.FC = () => {
-  // Destructure from your Context structure
-  const { audio, saveRecording } = useApp();
-  const { audioBuffer } = audio;
-  
-  const [activeRows, setActiveRows] = useState<number[]>(new Array(MAX_BANDS).fill(-1));
-  const [timeLeft, setTimeLeft] = useState(360);
-  const [showRibbon, setShowRibbon] = useState(false);
-  
-  const finalEQStateRef = useRef<number[]>(new Array(MAX_BANDS).fill(0));
-  
-  useEffect(() => {
-    if (!audioBuffer) return;
+interface AppState {
+  file: File | null;
+  soundPrintData: SoundPrintData | null;
+  isSubscribed: boolean;
+  step: number;
+}
 
-    const initAudio = async () => {
-      await audioEngine.init();
-      audioEngine.startPlayback(audioBuffer, handleCompletion);
-    };
-
-    initAudio();
-
-    const duration = Math.min(600, Math.floor(audioBuffer.duration));
-    setTimeLeft(duration);
-
-    const interval = setInterval(() => {
-      setTimeLeft((prev) => {
-        const next = prev - 1;
-        if (next <= 36) setShowRibbon(true);
-        if (next <= 0) {
-            clearInterval(interval);
-            handleCompletion();
-            return 0;
-        }
-        return next;
-      });
-    }, 1000);
-
-    return () => {
-        clearInterval(interval);
-        audioEngine.stop();
-    };
-  }, [audioBuffer]);
-
-  const handleCompletion = () => {
-    const blob = audioEngine.getRecordingBlob();
-    if (saveRecording) {
-        saveRecording(blob, finalEQStateRef.current);
-    }
-  };
-
-  const handleInteraction = (clientX: number, clientY: number) => {
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-    const x = (clientX / width) * 2 - 1;
-    const y = -(clientY / height) * 2 + 1;
-
-    const bandIndex = Math.floor(((x + 1) / 2) * MAX_BANDS);
-    const rowIndex = Math.floor(((y + 1) / 2) * MAX_ROWS);
-
-    if (bandIndex >= 0 && bandIndex < MAX_BANDS && rowIndex >= 0 && rowIndex < MAX_ROWS) {
-        audioEngine.setBandGain(bandIndex, rowIndex);
-        
-        const newRows = [...activeRows];
-        newRows[bandIndex] = rowIndex;
-        setActiveRows(newRows);
-        finalEQStateRef.current[bandIndex] = rowIndex;
-    }
-  };
-
-  const onTouchMove = (e: React.TouchEvent) => {
-    for (let i = 0; i < e.touches.length; i++) {
-        handleInteraction(e.touches[i].clientX, e.touches[i].clientY);
-    }
-  };
-
-  const onMouseMove = (e: React.MouseEvent) => {
-    if (e.buttons === 1) { 
-        handleInteraction(e.clientX, e.clientY);
-    }
-  };
-
-  return (
-    <div 
-      className="instrument-container" 
-      style={{ width: '100vw', height: '100vh', background: '#000', overflow: 'hidden', touchAction: 'none' }}
-      onTouchStart={onTouchMove}
-      onTouchMove={onTouchMove}
-      onMouseDown={onMouseMove}
-      onMouseMove={onMouseMove}
-    >
-      <div className="ritual-timer">
-        {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}
-      </div>
-
-      <Canvas
-        orthographic
-        camera={{ zoom: 1, position: [0, 0, 10], near: 0.1, far: 1000 }}
-        style={{ width: '100%', height: '100%' }}
-      >
-        <ambientLight intensity={0.5} />
-        {BAND_COLORS.map((color, i) => (
-          <BandColumn 
-            key={i}
-            index={i}
-            colorData={color}
-            activeRow={activeRows[i]}
-            maxRows={MAX_ROWS}
-            maxBands={MAX_BANDS}
-          />
-        ))}
-
-        {showRibbon && (
-            <Ribbon 
-                finalEQState={activeRows}
-                maxRows={MAX_ROWS}
-                maxBands={MAX_BANDS}
-                isVisible={true}
-            />
-        )}
-      </Canvas>
-    </div>
-  );
+export type Recording = {
+  id: string;
+  url: string;
+  blob: Blob;
+  createdAt: number;
+  fileName?: string;
 };
 
-export default InstrumentPage;
+type AppContextValue = {
+  state: AppState;
+  setFile: (f: File) => void;
+  setSoundPrint: (d: SoundPrintData) => void;
+  setStep: (s: number) => void;
+  reset: () => void;
+  // InstrumentPage requirements
+  audio: {
+    audioBuffer: AudioBuffer | null;
+    setAudioBuffer: React.Dispatch<React.SetStateAction<AudioBuffer | null>>;
+  };
+  recordings: Recording[];
+  saveRecording: (blob: Blob, fileName?: string) => void;
+};
+
+const AppContext = createContext<AppContextValue | undefined>(undefined);
+
+export function AppProvider({ children }: { children: React.ReactNode }) {
+  const [state, setState] = useState<AppState>({
+    file: null,
+    soundPrintData: null,
+    isSubscribed: false,
+    step: 1,
+  });
+
+  const [audioBuffer, setAudioBuffer] = useState<AudioBuffer | null>(null);
+  const [recordings, setRecordings] = useState<Recording[]>([]);
+
+  const value = useMemo<AppContextValue>(() => {
+    const setFile = (file: File) =>
+      setState((prev) => ({ ...prev, file, step: 2 }));
+
+    const setSoundPrint = (soundPrintData: SoundPrintData) =>
+      setState((prev) => ({ ...prev, soundPrintData }));
+
+    const setStep = (step: number) =>
+      setState((prev) => ({ ...prev, step }));
+
+    const reset = () => {
+      setState({
+        file: null,
+        soundPrintData: null,
+        isSubscribed: false,
+        step: 1,
+      });
+      setAudioBuffer(null);
+    };
+
+    const saveRecording = (blob: Blob, fileName?: string) => {
+      const url = URL.createObjectURL(blob);
+      const id = crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      setRecordings((prev) => [
+        { id, url, blob, createdAt: Date.now(), fileName },
+        ...prev,
+      ]);
+    };
+
+    return {
+      state,
+      setFile,
+      setSoundPrint,
+      setStep,
+      reset,
+      audio: { audioBuffer, setAudioBuffer },
+      recordings,
+      saveRecording,
+    };
+  }, [state, audioBuffer, recordings]);
+
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+}
+
+export function useApp() {
+  const ctx = useContext(AppContext);
+  if (!ctx) throw new Error("useApp must be used within AppProvider");
+  return ctx;
+}
