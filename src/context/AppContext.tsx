@@ -1,6 +1,4 @@
-// src/context/AppContext.tsx
 import { createContext, useContext, useState, useCallback } from 'react';
-// FIX: Use 'import type' for Typescript interfaces
 import type { ReactNode } from 'react';
 
 interface AudioState {
@@ -10,27 +8,30 @@ interface AudioState {
   isPlaying: boolean;
   currentTime: number;
   duration: number;
+  recordingBlob: Blob | null; // Added this
 }
 
 interface RitualState {
   phase: 'upload' | 'ritual' | 'capture' | 'complete';
   countdown: number;
   soundPrintDataUrl: string | null;
+  finalEQState: number[]; // Added this to store the visual pattern
 }
 
 interface AppContextType {
   audio: AudioState;
-  state: AudioState; // Alias for backward compatibility if you used 'state' elsewhere
+  state: AudioState; // Alias
   ritual: RitualState;
-  setFile: (file: File) => void; // Explicitly named for UploadPage
+  setFile: (file: File) => void;
   setAudioFile: (file: File) => void;
   setAudioBuffer: (buffer: AudioBuffer) => void;
   setPlaying: (playing: boolean) => void;
   updateCurrentTime: (time: number) => void;
   setRitualPhase: (phase: RitualState['phase']) => void;
   setCountdown: (count: number) => void;
-  setSoundPrint: (data: any) => void; // Simplified for the result object
+  setSoundPrint: (data: any) => void; 
   captureSoundPrint: (dataUrl: string) => void;
+  saveRecording: (blob: Blob, finalEQ: number[]) => void; // Added this
   reset: () => void;
 }
 
@@ -41,12 +42,14 @@ const initialAudioState: AudioState = {
   isPlaying: false,
   currentTime: 0,
   duration: 0,
+  recordingBlob: null,
 };
 
 const initialRitualState: RitualState = {
   phase: 'upload',
   countdown: 36,
   soundPrintDataUrl: null,
+  finalEQState: [],
 };
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -55,7 +58,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [audio, setAudio] = useState<AudioState>(initialAudioState);
   const [ritual, setRitual] = useState<RitualState>(initialRitualState);
 
-  // Helper to match UploadPage expectations
   const setFile = useCallback((file: File) => {
     setAudio(prev => ({ ...prev, file, isProcessing: true }));
   }, []);
@@ -95,11 +97,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
-  // Placeholder for the result object structure
   const setSoundPrint = useCallback((data: any) => {
-    console.log("SoundPrint Captured:", data);
     if (data.dataUrl) captureSoundPrint(data.dataUrl);
   }, [captureSoundPrint]);
+
+  // New function to handle the end of the instrument session
+  const saveRecording = useCallback((blob: Blob, finalEQ: number[]) => {
+    setAudio(prev => ({ ...prev, recordingBlob: blob }));
+    setRitual(prev => ({ ...prev, finalEQState: finalEQ, phase: 'capture' }));
+  }, []);
 
   const reset = useCallback(() => {
     setAudio(initialAudioState);
@@ -109,7 +115,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   return (
     <AppContext.Provider value={{
       audio,
-      state: audio, // Alias
+      state: audio,
       ritual,
       setFile,
       setAudioFile,
@@ -120,6 +126,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setCountdown,
       setSoundPrint,
       captureSoundPrint,
+      saveRecording,
       reset,
     }}>
       {children}
@@ -127,6 +134,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// Exporting as useApp to match your existing code
 export function useApp() {
   const context = useContext(AppContext);
   if (!context) {
@@ -134,3 +142,6 @@ export function useApp() {
   }
   return context;
 }
+
+// Alias for compatibility if needed, but we will update InstrumentPage to use useApp
+export const useAppContext = useApp;
