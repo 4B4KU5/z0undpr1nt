@@ -1,0 +1,19 @@
+[33m7598b1f[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Fix RitualOverlay blocking and restore UI wiring
+[33mf52f78c[m Fix UploadPage import syntax
+[33mcd005ac[m Add missing Instrument.css
+[33m235cd6d[m Add missing App.css file
+[33mf135110[m Fix unused variable in RitualOverlay
+[33m7895c45[m Phase 3: Complete Instrument Logic with TypeScript Fixes
+[33mf4c2f20[m Update bandColors.ts
+[33m573368a[m feat: implement immersive ritual launch overlay
+[33m5f4e8e5[m fix: cleanup unused components and fix strict type imports
+[33m41965f6[m feat: finalize dream-state UI and hotspot mapping
+[33m5311e58[m feat: initialize audio engine and 36-band visualizer
+[33m4ec608f[m "fixed double vision again"
+[33m83707ff[m fixed double vision, converted PNG to jpg and reduced size
+[33m9477b0f[m feat: apply cyber terminal skin and neon styling
+[33m5ab398a[m fix: install tailwind v3 and fix postcss config errors
+[33mf663002[m fix: add router + missing pages/state modules
+[33m9df5edd[m fix: restore missing folders and dependencies
+[33mda29906[m fix: remove vite boilerplate, install 4B4KU5 engine
+[33m1b620b1[m feat: 4B4KU5 engine scaffold

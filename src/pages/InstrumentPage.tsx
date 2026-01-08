@@ -1,17 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { useApp } from '../context/AppContext'; // CHANGED THIS IMPORT
+import { useApp } from '../state/AppContext'; // FIX: Pointing to correct 'state' folder
 import { audioEngine } from '../audio/AudioEngine';
 import { BandColumn } from '../components/BandColumn';
 import { Ribbon } from '../components/Ribbon';
 import { BAND_COLORS } from '../config/bandColors';
+// Ensure this CSS file exists, or create it as we discussed earlier
 import '../styles/Instrument.css'; 
 
 const MAX_BANDS = 36;
 const MAX_ROWS = 36;
 
 const InstrumentPage: React.FC = () => {
-  // CHANGED: Destructuring from 'audio' state object to match your context
+  // Destructure from your Context structure
   const { audio, saveRecording } = useApp();
   const { audioBuffer } = audio;
   
@@ -55,7 +56,9 @@ const InstrumentPage: React.FC = () => {
 
   const handleCompletion = () => {
     const blob = audioEngine.getRecordingBlob();
-    saveRecording(blob, finalEQStateRef.current);
+    if (saveRecording) {
+        saveRecording(blob, finalEQStateRef.current);
+    }
   };
 
   const handleInteraction = (clientX: number, clientY: number) => {
@@ -98,7 +101,7 @@ const InstrumentPage: React.FC = () => {
       onMouseDown={onMouseMove}
       onMouseMove={onMouseMove}
     >
-      <div style={{ position: 'absolute', top: 20, right: 20, color: 'white', zIndex: 10, fontFamily: 'monospace', fontSize: '24px' }}>
+      <div className="ritual-timer">
         {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}
       </div>
 
