@@ -1,9 +1,75 @@
-.instrument-container {
-      width: 100vw;
-        height: 100vh;
-          position: relative;
-            background-color: #000;
-              overflow: hidden;
-                touch-action: none;
-                }
+/* src/styles/Instrument.css */
+
+:root {
+  --bg: #0b0d12;
+  --fg: #e8ebf0;
+  --muted: #2b2f3a;
+  --cell: #1c2130;
+  --active: #4cc9f0;
+  --accent: #ffd166;
+}
+
+/* Page wrapper */
+.instrument-page {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--fg);
+  padding: 24px;
+  box-sizing: border-box;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* Optional header/controls area */
+.controls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+/* 36-column grid for bands (optional, if you lay out columns in a parent) */
+.instrument-grid {
+  display: grid;
+  grid-template-columns: repeat(36, minmax(0, 1fr));
+  gap: 4px;
+}
+
+/* Each band as a column of 36 rows */
+.band-column {
+  display: grid;
+  grid-template-rows: repeat(36, minmax(12px, 1fr));
+  gap: 4px;
+}
+
+/* Individual cells */
+.cell {
+  background: var(--cell);
+  border-radius: 2px;
+}
+
+.cell.is-active {
+  background: var(--active);
+}
+
+/* Optional ribbon visualization */
+.ribbon {
+  margin-top: 12px;
+  height: 6px;
+  background: var(--accent);
+  border-radius: 3px;
+}
+
+/* Generic button styling */
+.button {
+  padding: 8px 12px;
+  background: #111827;
+  color: var(--fg);
+  border: 1px solid #374151;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.button:hover {
+  border-color: var(--active);
+  color: var(--active);
 }
